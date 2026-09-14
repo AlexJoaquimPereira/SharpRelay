@@ -5,6 +5,7 @@
 import asyncio
 import json
 import ssl
+import os
 from bridge.relay import handle_send
 
 SHARP_BACKEND_HOST = '127.0.0.1'
