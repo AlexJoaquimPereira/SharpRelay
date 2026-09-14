@@ -15,9 +15,11 @@ SMTP_CONNECT_TIMEOUT = 30  # seconds
 
 
 def _send_sync(from_addr, to_addr, subject, body, smtp_host, smtp_port,
-               smtp_user, smtp_pass):
+               smtp_user, smtp_pass, html_body=None):
     msg = EmailMessage()
     msg.set_content(body)
+    if html_body:
+        msg.add_alternative(html_body, subtype="html")
     msg["Subject"] = subject
     msg["From"] = from_addr
     msg["To"] = to_addr
@@ -33,9 +35,10 @@ def _send_sync(from_addr, to_addr, subject, body, smtp_host, smtp_port,
 
 
 async def send_smtp_email(from_addr, to_addr, subject, body,
-                          smtp_host, smtp_user, smtp_pass, smtp_port=587):
+                          smtp_host, smtp_user, smtp_pass, smtp_port=587,
+                          html_body=None):
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(
         None, _send_sync, from_addr, to_addr, subject, body,
-        smtp_host, smtp_port, smtp_user, smtp_pass,
+        smtp_host, smtp_port, smtp_user, smtp_pass, html_body,
     )
