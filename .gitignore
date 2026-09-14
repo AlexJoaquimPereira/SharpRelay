@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Private key material and certificates: never commit these
+certs/
+*.key
+*.crt
+*.pem
+
+# Local history backups and secrets
+.backup/
+.env
