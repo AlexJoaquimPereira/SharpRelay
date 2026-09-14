@@ -1,18 +1,41 @@
+"""Asynchronous SMTP delivery used by the SHARP -> e-mail relay.
+
+The blocking smtplib work runs in an executor so the bridge's event loop
+is never blocked. Messages are well-formed MIME (UTF-8) with Date and
+Message-ID headers, and are submitted over STARTTLS.
+"""
+
 import asyncio
 import smtplib
-from email.mime.text import MIMEText
+import ssl
+from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
-def _send_sync(from_addr, to_addr, subject, body, smtp_host, smtp_user, smtp_pass):
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = from_addr
-    msg['To'] = to_addr
+SMTP_CONNECT_TIMEOUT = 30  # seconds
 
-    with smtplib.SMTP(smtp_host, 587) as server:
-        server.starttls()
+
+def _send_sync(from_addr, to_addr, subject, body, smtp_host, smtp_port,
+               smtp_user, smtp_pass):
+    msg = EmailMessage()
+    msg.set_content(body)
+    msg["Subject"] = subject
+    msg["From"] = from_addr
+    msg["To"] = to_addr
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid()
+
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=SMTP_CONNECT_TIMEOUT) as server:
+        server.ehlo()
+        server.starttls(context=ssl.create_default_context())
+        server.ehlo()
         server.login(smtp_user, smtp_pass)
-        server.sendmail(from_addr, [to_addr], msg.as_string())
+        server.send_message(msg)
 
-async def send_smtp_email(from_addr, to_addr, subject, body, smtp_host, smtp_user, smtp_pass):
+
+async def send_smtp_email(from_addr, to_addr, subject, body,
+                          smtp_host, smtp_user, smtp_pass, smtp_port=587):
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, _send_sync, from_addr, to_addr, subject, body, smtp_host, smtp_user, smtp_pass)
+    await loop.run_in_executor(
+        None, _send_sync, from_addr, to_addr, subject, body,
+        smtp_host, smtp_port, smtp_user, smtp_pass,
+    )
